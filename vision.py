@@ -11,6 +11,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from torch.autograd import Variable
+from sgd_lr_norm import *
 
 #######################################################################################
 # Configuration
@@ -21,19 +22,19 @@ parser.add_argument('--test_batch_size', type=int, default=1000, metavar='N',
                     help='input batch size for testing (default: 1000)')
 parser.add_argument('--epochs', type=int, default=10, metavar='N',
                     help='number of epochs to train (default: 10)')
-parser.add_argument('--optimizer', type=str, default='SGD', metavar='M',
-                    help='SGD|Adam')
-parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
-                    help='learning rate (default: 0.01)')
+parser.add_argument('--optimizer', type=str, default='SGD_lr_norm', metavar='M',
+                    help='SGD_lr_norm|Adam')
+parser.add_argument('--lr', type=float, default=0.05, metavar='LR',
+                    help='learning rate (default: 0.05)')
 parser.add_argument('--momentum', type=float, default=0.5, metavar='M',
-                    help='SGD momentum (default: 0.5)')
+                    help='SGD_lr_norm momentum (default: 0.5)')
 parser.add_argument('--no_cuda', action='store_true', default=False,
                     help='disables CUDA training')
 parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
 parser.add_argument('--log_interval', type=int, default=10, metavar='N',
                     help='how many batches to wait before logging training status')
-parser.add_argument('--model', type=str, default='ConvolutionalNet',
+parser.add_argument('--model', type=str, default='MLPNet',
                         help='ConvolutionalNet|MLPNet')
 parser.add_argument('--dataset', type=str, default='cifar10',
                         help='mnist|cifar10|cifar100|lsun|svhn')
@@ -192,8 +193,8 @@ assert model
 if args.cuda:
     model.cuda()
 
-if args.optimizer == "SGD":
-    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+if args.optimizer == "SGD_lr_norm":
+    optimizer = SGD_lr_norm(model.parameters(), lr=args.lr, momentum=args.momentum, schedule=None)
 elif args.optimizer == "Adam":
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 assert optimizer
