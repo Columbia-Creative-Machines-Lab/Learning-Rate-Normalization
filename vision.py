@@ -34,7 +34,7 @@ parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
 parser.add_argument('--log_interval', type=int, default=10, metavar='N',
                     help='how many batches to wait before logging training status')
-parser.add_argument('--model', type=str, default='MLPNet',
+parser.add_argument('--model', type=str, default='ConvolutionalNet',
                         help='ConvolutionalNet|MLPNet')
 parser.add_argument('--dataset', type=str, default='cifar10',
                         help='mnist|cifar10|cifar100|lsun|svhn')
@@ -46,6 +46,10 @@ parser.add_argument('--save_checkpoint', type=str, default='./checkpoint',
                         help='where to save checkpoints (if any).')
 parser.add_argument('--load_checkpoint', type=str,
                         help='where to load checkpoint (if any).')
+parser.add_argument('--lr_scheduler', type=str, default='none',
+                        help='type of learning rate scheduler (exponential or linear or none)')
+parser.add_argument('--gamma', type=float, default=0.1,
+                        help='learning rate scheduler decay parameter')
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 
@@ -194,7 +198,7 @@ if args.cuda:
     model.cuda()
 
 if args.optimizer == "SGD_lr_norm":
-    optimizer = SGD_lr_norm(model.parameters(), lr=args.lr, momentum=args.momentum, schedule=None)
+    optimizer = SGD_lr_norm(model.parameters(), lr=args.lr, momentum=args.momentum, schedule=args.lr_scheduler, gamma=args.gamma)
 elif args.optimizer == "Adam":
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 assert optimizer

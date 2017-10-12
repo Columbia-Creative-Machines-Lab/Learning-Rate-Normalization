@@ -1,6 +1,7 @@
 from torch.optim import Optimizer
 from torch import nn
 import numpy as np
+import math
 
 class SGD_lr_norm(Optimizer):
     r"""Implements stochastic gradient descent (optionally with momentum).
@@ -49,13 +50,14 @@ class SGD_lr_norm(Optimizer):
     """
 
     def __init__(self, params, lr=0.01, momentum=0, dampening=0,
-                 weight_decay=0, nesterov=False, schedule=None):
+                 weight_decay=0, nesterov=False, schedule=None, gamma=0.1):
         defaults = dict(lr=lr, momentum=momentum, dampening=dampening,
                         weight_decay=weight_decay, nesterov=nesterov)
         if nesterov and (momentum <= 0 or dampening != 0):
             raise ValueError("Nesterov momentum requires a momentum and zero dampening")
         super(SGD_lr_norm, self).__init__(params, defaults)
         self.schedule = schedule
+        self.gamma = gamma
 
     def __setstate__(self, state):
         super(SGD_lr_norm, self).__setstate__(state)
@@ -103,13 +105,16 @@ class SGD_lr_norm(Optimizer):
                 # can write a function here that takes in a schedule and decays according to that
 
                 # TODO: Implement the normalization of the LR over the decay schedules
-                if self.schedule == 'exp_decay':
-                    lr = group['lr'] ** (global_step / decay_steps)
-                    p.data.add_(-lr, d_p)
-                elif self.schedule == 'lin_decay':
-                    lr = group['lr']*(global_step / decay_steps)
-                    p.data.add_(-lr, d_p)
-
+                if self.schedule == 'exponential':
+                    norm = np.linalg.norm(d_p.cpu().numpy())
+                    new_lr = -group['lr']/norm
+                    new_lr = new_lr * math.exp(-self.gamma*j)
+                    p.data.add_(new_lr, d_p)
+                elif self.schedule == 'linear':
+                    norm = np.linalg.norm(d_p.cpu().numpy())
+                    new_lr = -group['lr']/norm
+                    new_lr -= new_lr*((1-self.gamma)**j)
+                    p.data.add_(new_lr, d_p)
                 else: # Normalize
                     norm = np.linalg.norm(d_p.cpu().numpy())
                     new_lr = -group['lr']/norm

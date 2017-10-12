@@ -1,0 +1,23 @@
+For Default CNN in Vision:
+Exponential:
+Gamma:		Final Acc:
+0.01		64%	
+0.02		65%		
+0.05		66%	
+0.10		65%	
+0.20		67%
+0.50		47%
+
+Linear:
+Gamma:		Final Acc:
+0.01		57%
+0.02		58%	
+0.05		58%
+0.10		60%
+0.20		61%	
+0.50		61%
+
+Baseline:
+65%
+
+
