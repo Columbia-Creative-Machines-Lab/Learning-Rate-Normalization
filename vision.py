@@ -148,6 +148,7 @@ assert n_class
 class ConvolutionalNet(nn.Module):
     def __init__(self, width, height, depth, n_class):
         super(ConvolutionalNet, self).__init__()
+
         self.conv1 = nn.Conv2d(depth, 20, 5)
         self.bc1 = nn.BatchNorm2d(20)
         self.conv2 = nn.Conv2d(20, 20, 3)

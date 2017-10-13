@@ -77,11 +77,16 @@ class SGD_lr_norm(Optimizer):
         global_step = 0.0
         decay_steps = 1.0
         i = 0
+        # TODO: multiply all gradients by the norm of the gradient of the last layer
         for group in self.param_groups:
             weight_decay = group['weight_decay']
             momentum = group['momentum']
             dampening = group['dampening']
             nesterov = group['nesterov']
+
+            # -2 for the last layer of weights, -1 is just the output activations
+            grad_mul = np.linalg.norm(group['params'][-2].grad.data.cpu().numpy())
+
             j = 0
             for p in group['params']:
                 if p.grad is None:
@@ -104,20 +109,25 @@ class SGD_lr_norm(Optimizer):
                 # seems like you can get layer information from the p iteration and the group iteration
                 # can write a function here that takes in a schedule and decays according to that
 
-                # TODO: Implement the normalization of the LR over the decay schedules
+                # TODO: write learning rate annealing (scheduler) lower learning rate after epochs 
                 if self.schedule == 'exponential':
                     norm = np.linalg.norm(d_p.cpu().numpy())
                     new_lr = -group['lr']/norm
+                    new_lr *= grad_mul
                     new_lr = new_lr * math.exp(-self.gamma*j)
                     p.data.add_(new_lr, d_p)
                 elif self.schedule == 'linear':
                     norm = np.linalg.norm(d_p.cpu().numpy())
                     new_lr = -group['lr']/norm
+                    new_lr *= grad_mul
                     new_lr -= new_lr*((1-self.gamma)**j)
                     p.data.add_(new_lr, d_p)
+                elif self.schedule == 'none':
+                    p.data.add_(-group['lr'], d_p)
                 else: # Normalize
                     norm = np.linalg.norm(d_p.cpu().numpy())
                     new_lr = -group['lr']/norm
+                    new_lr *= grad_mul
                     p.data.add_(new_lr, d_p)
                 j += 1
             i += 1
