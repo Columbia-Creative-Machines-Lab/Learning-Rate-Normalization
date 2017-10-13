@@ -48,7 +48,7 @@ parser.add_argument('--load_checkpoint', type=str,
                         help='where to load checkpoint (if any).')
 parser.add_argument('--lr_scheduler', type=str, default='none',
                         help='type of learning rate scheduler (exponential or linear or none)')
-parser.add_argument('--gamma', type=float, default=0.1,
+parser.add_argument('--gamma', type=float, default=0.0,
                         help='learning rate scheduler decay parameter')
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
@@ -154,18 +154,43 @@ class ConvolutionalNet(nn.Module):
         self.bc2 = nn.BatchNorm2d(20)
         self.conv3 = nn.Conv2d(20, 20, 3)
         self.bc3 = nn.BatchNorm2d(20)
-        output_width = width - 8
+
+        self.conv4 = nn.Conv2d(20, 20, 3)
+        self.bc4 = nn.BatchNorm2d(20)
+        self.conv5 = nn.Conv2d(20, 20, 3)
+        self.bc5 = nn.BatchNorm2d(20)
+        self.conv6 = nn.Conv2d(20, 20, 3)
+        self.bc6 = nn.BatchNorm2d(20)
+
+        #self.conv7 = nn.Conv2d(20, 20, 3)
+        #self.bc7 = nn.BatchNorm2d(20)
+        #self.conv8 = nn.Conv2d(20, 20, 3)
+        #self.bc8 = nn.BatchNorm2d(20)
+        #self.conv9 = nn.Conv2d(20, 20, 3)
+        #self.bc9 = nn.BatchNorm2d(20)
+
+
+        output_width = width - 14
         output_features = 20 * output_width * output_width
         self.fc1 = nn.Linear(output_features, 50)
-        self.bc4 = nn.BatchNorm1d(50)
+        self.bc10 = nn.BatchNorm1d(50)
         self.fc2 = nn.Linear(50, n_class)
 
     def forward(self, x):
         x = self.bc1(F.relu(self.conv1(x)))
         x = self.bc2(F.relu(self.conv2(x)))
         x = self.bc3(F.relu(self.conv3(x)))
+
+        x = self.bc4(F.relu(self.conv4(x)))
+        x = self.bc5(F.relu(self.conv5(x)))
+        x = self.bc6(F.relu(self.conv6(x)))
+
+        #x = self.bc7(F.relu(self.conv7(x)))
+        #x = self.bc8(F.relu(self.conv8(x)))
+        #x = self.bc9(F.relu(self.conv9(x)))
+
         x = x.view(x.size(0), -1)
-        x = self.bc4(F.relu(self.fc1(x)))
+        x = self.bc10(F.relu(self.fc1(x)))
         x = F.relu(self.fc2(x))
         return F.log_softmax(x)
 
@@ -216,10 +241,10 @@ def train(epoch):
         loss = F.nll_loss(output, target)
         loss.backward()
         optimizer.step()
-        if batch_idx % args.log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.data[0]))
+        #if batch_idx % args.log_interval == 0:
+        #   print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+        #             epoch, batch_idx * len(data), len(train_loader.dataset),
+        #            100. * batch_idx / len(train_loader), loss.data[0]))
     checkpoint_path = os.path.join(args.save_checkpoint, "%s_epoch_%d.pth" % (args.model, epoch))
     torch.save(model.state_dict(), checkpoint_path)
 
