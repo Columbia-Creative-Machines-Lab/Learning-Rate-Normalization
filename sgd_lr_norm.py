@@ -88,6 +88,7 @@ class SGD_lr_norm(Optimizer):
             grad_mul = np.linalg.norm(group['params'][-2].grad.data.cpu().numpy())
 
             j = 0
+            group['lr'] *= 1-1e-4
             for p in group['params']:
                 if p.grad is None:
                     continue
