@@ -19,7 +19,7 @@ class SGD_lr_norm(Optimizer):
         nesterov (bool, optional): enables Nesterov momentum (default: False)
 
     Example:
-        >>> optimizer = torch.optim.SGD_lr_norm(model.parameters(), lr=0.1, momentum=0.9)
+        >>> optimizer = SGD_lr_norm(model.parameters(), lr=0.1, momentum=0.9)
         >>> optimizer.zero_grad()
         >>> loss_fn(model(input), target).backward()
         >>> optimizer.step()
@@ -82,7 +82,23 @@ class SGD_lr_norm(Optimizer):
             momentum = group['momentum']
             dampening = group['dampening']
             nesterov = group['nesterov']
-            j = 0
+
+            # -2 for the last layer of weights, -1 is just the output activations
+            grad_mul = np.linalg.norm(group['params'][-2].grad.data.cpu().numpy())
+            avg_norm = 0.0
+            i = 0.0
+            #for j in range(1, len(group['params'])/2):
+            #    weight = group['params'][-2*j].grad.data.cpu().numpy()
+            #    weight_norm = np.linalg.norm(weight)
+            #    avg_norm += weight_norm
+            #    i += 1.0
+            #    #if weight_norm > max_norm: min_norm = weight_norm
+            #grad_mul = avg_norm/i
+
+            #grad_mul = 1
+            # d is for depth
+            d = 0
+            #group['lr'] *= 1-1e-4
             for p in group['params']:
                 if p.grad is None:
                     continue
@@ -104,22 +120,36 @@ class SGD_lr_norm(Optimizer):
                 # seems like you can get layer information from the p iteration and the group iteration
                 # can write a function here that takes in a schedule and decays according to that
 
-                # TODO: Implement the normalization of the LR over the decay schedules
+                # TODO: write learning rate annealing (scheduler) lower learning rate after epochs
                 if self.schedule == 'exponential':
                     norm = np.linalg.norm(d_p.cpu().numpy())
-                    new_lr = -group['lr']/norm
-                    new_lr = new_lr * math.exp(-self.gamma*j)
-                    p.data.add_(new_lr, d_p)
+                    if norm == 0:
+                        p.data.add_(-group['lr'], d_p)
+                    else:
+                        new_lr = -group['lr']/norm
+                        new_lr *= grad_mul
+                        new_lr = new_lr * math.exp(-self.gamma*d)
+                        p.data.add_(new_lr, d_p)
                 elif self.schedule == 'linear':
                     norm = np.linalg.norm(d_p.cpu().numpy())
-                    new_lr = -group['lr']/norm
-                    new_lr -= new_lr*((1-self.gamma)**j)
-                    p.data.add_(new_lr, d_p)
+                    if norm == 0:
+                        p.data.add_(-group['lr'], d_p)
+                    else:
+                        new_lr = -group['lr']/norm
+                        new_lr *= grad_mul
+                        new_lr -= new_lr*((1-self.gamma)**d)
+                        p.data.add_(new_lr, d_p)
+                elif self.schedule == 'none':
+                    p.data.add_(-group['lr'], d_p)
                 else: # Normalize
                     norm = np.linalg.norm(d_p.cpu().numpy())
-                    new_lr = -group['lr']/norm
-                    p.data.add_(new_lr, d_p)
-                j += 1
+                    if norm == 0:
+                        p.data.add_(-group['lr'], d_p)
+                    else:
+                        new_lr = -group['lr']/norm
+                        new_lr *= grad_mul
+                        p.data.add_(new_lr, d_p)
+                d += 1
             i += 1
 
         return loss
