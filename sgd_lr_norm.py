@@ -50,7 +50,8 @@ class SGD_lr_norm(Optimizer):
     """
 
     def __init__(self, params, lr=0.01, momentum=0, dampening=0,
-                 weight_decay=0, nesterov=False, schedule=None, gamma=0.1):
+                 weight_decay=0, nesterov=False, schedule=None, gamma=0.1,
+                 hidden_depth=None):
         defaults = dict(lr=lr, momentum=momentum, dampening=dampening,
                         weight_decay=weight_decay, nesterov=nesterov)
         if nesterov and (momentum <= 0 or dampening != 0):
@@ -58,6 +59,8 @@ class SGD_lr_norm(Optimizer):
         super(SGD_lr_norm, self).__init__(params, defaults)
         self.schedule = schedule
         self.gamma = gamma
+        self._hidden_depth = 0
+        self._hidden_depth_ref = hidden_depth
 
     def __setstate__(self, state):
         super(SGD_lr_norm, self).__setstate__(state)
@@ -71,6 +74,10 @@ class SGD_lr_norm(Optimizer):
             closure (callable, optional): A closure that reevaluates the model
                 and returns the loss.
         """
+
+        # Was thinking of using this as a method for incrementing based on hidden but it seems impractical
+        if self._hidden_depth_ref is not None:
+            self._hidden_depth = self.__get_hidden_depth()
         loss = None
         if closure is not None:
             loss = closure()
@@ -121,35 +128,48 @@ class SGD_lr_norm(Optimizer):
                 # can write a function here that takes in a schedule and decays according to that
 
                 # TODO: write learning rate annealing (scheduler) lower learning rate after epochs
-                if self.schedule == 'exponential':
-                    norm = np.linalg.norm(d_p.cpu().numpy())
-                    if norm == 0:
-                        p.data.add_(-group['lr'], d_p)
-                    else:
-                        new_lr = -group['lr']/norm
-                        new_lr *= grad_mul
-                        new_lr = new_lr * math.exp(-self.gamma*d)
-                        p.data.add_(new_lr, d_p)
-                elif self.schedule == 'linear':
-                    norm = np.linalg.norm(d_p.cpu().numpy())
-                    if norm == 0:
-                        p.data.add_(-group['lr'], d_p)
-                    else:
-                        new_lr = -group['lr']/norm
-                        new_lr *= grad_mul
-                        new_lr -= new_lr*((1-self.gamma)**d)
-                        p.data.add_(new_lr, d_p)
-                elif self.schedule == 'none':
+
+                #if self.schedule != 'none':
+
+                # This conditional prevents the optimizer from considering things such as batch-norm/dropout
+                # as if they were extra depth to the network
+                if p.data.shape[0] > 1 and self.schedule != 'none':
+                    if self.schedule == 'exponential':
+                        norm = np.linalg.norm(d_p.cpu().numpy())
+                        if norm == 0:
+                            p.data.add_(-group['lr'], d_p)
+                        else:
+                            new_lr = -group['lr']/norm
+                            new_lr *= grad_mul
+                            new_lr = new_lr * math.exp(-self.gamma*d)
+                            p.data.add_(new_lr, d_p)
+                    elif self.schedule == 'linear':
+                        norm = np.linalg.norm(d_p.cpu().numpy())
+                        if norm == 0:
+                            p.data.add_(-group['lr'], d_p)
+                        else:
+                            new_lr = -group['lr']/norm
+                            new_lr *= grad_mul
+                            new_lr -= new_lr*((1-self.gamma)**d)
+                            p.data.add_(new_lr, d_p)
+                    else: # Normalize
+                        norm = np.linalg.norm(d_p.cpu().numpy())
+                        if norm == 0:
+                            p.data.add_(-group['lr'], d_p)
+                        else:
+                            new_lr = -group['lr']/norm
+                            new_lr *= grad_mul
+                            p.data.add_(new_lr, d_p)
+                else:
                     p.data.add_(-group['lr'], d_p)
-                else: # Normalize
-                    norm = np.linalg.norm(d_p.cpu().numpy())
-                    if norm == 0:
-                        p.data.add_(-group['lr'], d_p)
-                    else:
-                        new_lr = -group['lr']/norm
-                        new_lr *= grad_mul
-                        p.data.add_(new_lr, d_p)
-                d += 1
+                if p.data.shape[0] > 1:
+                    d += 1
             i += 1
 
         return loss
+
+    def __get_hidden_depth(self):
+        return self._hidden_depth_ref()
+
+    def inc_hidden(self):
+        self._hidden_depth += 1

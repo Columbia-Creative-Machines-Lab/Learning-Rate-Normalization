@@ -48,7 +48,7 @@ parser.add_argument('--load_checkpoint', type=str,
                         help='where to load checkpoint (if any).')
 parser.add_argument('--lr_scheduler', type=str, default='none',
                         help='type of learning rate scheduler (exponential or linear or none)')
-parser.add_argument('--gamma', type=float, default=0.1,
+parser.add_argument('--gamma', type=float, default=0.05,
                         help='learning rate scheduler decay parameter')
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
