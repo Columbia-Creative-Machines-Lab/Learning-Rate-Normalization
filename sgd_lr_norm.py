@@ -74,6 +74,8 @@ class SGD_lr_norm(Optimizer):
             closure (callable, optional): A closure that reevaluates the model
                 and returns the loss.
         """
+        weight_norms = []
+        bias_norms = []
 
         # Was thinking of using this as a method for incrementing based on hidden but it seems impractical
         if self._hidden_depth_ref is not None:
@@ -134,67 +136,51 @@ class SGD_lr_norm(Optimizer):
 
                 # This conditional prevents the optimizer from considering things such as batch-norm/dropout
                 # as if they were extra depth to the network
-                if p.data.shape[0] > 1 and self.schedule != 'none':
+                if len(p.data.shape) > 1:
+                    new_lr = -group['lr']
+                    norm = np.linalg.norm(d_p.cpu().numpy())
                     if self.schedule == 'exponential':
-                        norm = np.linalg.norm(d_p.cpu().numpy())
-                        if norm == 0:
-                            p.data.add_(-group['lr'], d_p)
-                        else:
+                        if norm != 0:
                             new_lr = -group['lr']/norm
                             new_lr *= w_mul
                             new_lr = new_lr * math.exp(-self.gamma*d)
-                            p.data.add_(new_lr, d_p)
                     elif self.schedule == 'linear':
-                        norm = np.linalg.norm(d_p.cpu().numpy())
-                        if norm == 0:
-                            p.data.add_(-group['lr'], d_p)
-                        else:
+                        if norm != 0:
                             new_lr = -group['lr']/norm
                             new_lr *= w_mul
                             new_lr -= new_lr*((1-self.gamma)**d)
-                            p.data.add_(new_lr, d_p)
-                    else: # Normalize
-                        norm = np.linalg.norm(d_p.cpu().numpy())
-                        if norm == 0:
-                            p.data.add_(-group['lr'], d_p)
-                        else:
+                    elif self.schedule != 'none':
+                        if norm != 0:
                             new_lr = -group['lr']/norm
                             new_lr *= w_mul
-                            p.data.add_(new_lr, d_p)
-                elif p.data.shape[0] == 1 and self.schedule != 'none':
+                    weight_norms.append(new_lr*norm)
+                    p.data.add_(new_lr, d_p)
+                elif len(p.data.shape) == 1:
+                    new_lr = -group['lr']
+                    norm = np.linalg.norm(d_p.cpu().numpy())
                     if self.schedule == 'exponential':
-                        norm = np.linalg.norm(d_p.cpu().numpy())
-                        if norm == 0:
-                            p.data.add_(-group['lr'], d_p)
-                        else:
+                        if norm != 0:
                             new_lr = -group['lr']/norm
                             new_lr *= b_mul
                             new_lr = new_lr * math.exp(-self.gamma*d)
-                            p.data.add_(new_lr, d_p)
                     elif self.schedule == 'linear':
-                        norm = np.linalg.norm(d_p.cpu().numpy())
-                        if norm == 0:
-                            p.data.add_(-group['lr'], d_p)
-                        else:
+                        if norm != 0:
                             new_lr = -group['lr']/norm
                             new_lr *= b_mul
                             new_lr -= new_lr*((1-self.gamma)**d)
-                            p.data.add_(new_lr, d_p)
-                    else: # Normalize
-                        norm = np.linalg.norm(d_p.cpu().numpy())
-                        if norm == 0:
-                            p.data.add_(-group['lr'], d_p)
-                        else:
+                    elif self.schedule != 'none':
+                        if norm != 0:
                             new_lr = -group['lr']/norm
                             new_lr *= b_mul
-                            p.data.add_(new_lr, d_p)
+                    bias_norms.append(new_lr*norm)
+                    p.data.add_(new_lr, d_p)
                 else:
                     p.data.add_(-group['lr'], d_p)
                 if p.data.shape[0] > 1:
                     d += 1
             i += 1
 
-        return loss
+        return loss, [weight_norms, bias_norms]
 
     def __get_hidden_depth(self):
         return self._hidden_depth_ref()

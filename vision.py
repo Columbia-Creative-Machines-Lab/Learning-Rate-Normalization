@@ -12,6 +12,9 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from torch.autograd import Variable
 from sgd_lr_norm import *
+from adam_lr_norm import *
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 #######################################################################################
 # Configuration
@@ -22,8 +25,8 @@ parser.add_argument('--test_batch_size', type=int, default=1000, metavar='N',
                     help='input batch size for testing (default: 1000)')
 parser.add_argument('--epochs', type=int, default=10, metavar='N',
                     help='number of epochs to train (default: 10)')
-parser.add_argument('--optimizer', type=str, default='SGD_lr_norm', metavar='M',
-                    help='SGD_lr_norm|Adam')
+parser.add_argument('--optimizer', type=str, default='Adam_lr_norm', metavar='M',
+                    help='Adam_lr_norm|Adam')
 parser.add_argument('--lr', type=float, default=0.05, metavar='LR',
                     help='learning rate (default: 0.05)')
 parser.add_argument('--momentum', type=float, default=0.5, metavar='M',
@@ -46,9 +49,9 @@ parser.add_argument('--save_checkpoint', type=str, default='./checkpoint',
                         help='where to save checkpoints (if any).')
 parser.add_argument('--load_checkpoint', type=str,
                         help='where to load checkpoint (if any).')
-parser.add_argument('--lr_scheduler', type=str, default='none',
+parser.add_argument('--lr_scheduler', type=str, default='linear',
                         help='type of learning rate scheduler (exponential or linear or none)')
-parser.add_argument('--gamma', type=float, default=0.05,
+parser.add_argument('--gamma', type=float, default=0.5,
                         help='learning rate scheduler decay parameter')
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
@@ -158,7 +161,11 @@ class ConvolutionalNet(nn.Module):
         output_features = 20 * output_width * output_width
         self.fc1 = nn.Linear(output_features, 50)
         self.bc4 = nn.BatchNorm1d(50)
-        self.fc2 = nn.Linear(50, n_class)
+        self.fc2 = nn.Linear(50, 50)
+        self.bc5 = nn.BatchNorm1d(50)
+        self.fc3 = nn.Linear(50, 50)
+        self.bc6 = nn.BatchNorm1d(50)
+        self.fc4 = nn.Linear(50, n_class)
 
     def forward(self, x):
         x = self.bc1(F.relu(self.conv1(x)))
@@ -166,7 +173,9 @@ class ConvolutionalNet(nn.Module):
         x = self.bc3(F.relu(self.conv3(x)))
         x = x.view(x.size(0), -1)
         x = self.bc4(F.relu(self.fc1(x)))
-        x = F.relu(self.fc2(x))
+        x = self.bc5(F.relu(self.fc2(x)))
+        x = self.bc6(F.relu(self.fc3(x)))
+        x = F.relu(self.fc4(x))
         return F.log_softmax(x)
 
 class MLPNet(nn.Module):
@@ -197,8 +206,11 @@ assert model
 if args.cuda:
     model.cuda()
 
-if args.optimizer == "SGD_lr_norm":
-    optimizer = SGD_lr_norm(model.parameters(), lr=args.lr, momentum=args.momentum, schedule=args.lr_scheduler, gamma=args.gamma)
+optimizer = optim.Adam(model.parameters(), lr=args.lr)
+#if args.optimizer == "SGD_lr_norm":
+if args.optimizer == "Adam_lr_norm":
+    #optimizer = SGD_lr_norm(model.parameters(), lr=args.lr, momentum=args.momentum, schedule=args.lr_scheduler, gamma=args.gamma)
+    optimizer = Adam_lr_norm(model.parameters(), lr=args.lr, schedule=args.lr_scheduler, gamma=args.gamma)
 elif args.optimizer == "Adam":
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 assert optimizer
@@ -207,6 +219,7 @@ assert optimizer
 # Training and Testing
 def train(epoch):
     model.train()
+    norm_log = []
     for batch_idx, (data, target) in enumerate(train_loader):
         if args.cuda:
             data, target = data.cuda(), target.cuda()
@@ -215,6 +228,7 @@ def train(epoch):
         output = model(data)
         loss = F.nll_loss(output, target)
         loss.backward()
+        # _, norm_log = optimizer.step()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -222,6 +236,7 @@ def train(epoch):
                 100. * batch_idx / len(train_loader), loss.data[0]))
     checkpoint_path = os.path.join(args.save_checkpoint, "%s_epoch_%d.pth" % (args.model, epoch))
     torch.save(model.state_dict(), checkpoint_path)
+    return norm_log
 
 def test():
     model.eval()
@@ -252,7 +267,21 @@ if args.load_checkpoint:
     start_epoch += int(args.load_checkpoint.split('_')[-1][:-4])
     model.load_state_dict(torch.load(args.load_checkpoint))
 
+norm_logs = []
+epochs = []
 for epoch in range(start_epoch, args.epochs + 1):
-    train(epoch)
+    epochs.append(epoch)
+    norm_log = train(epoch)
+    #plt.figure()
+    #plt.plot(layer, norm_log[0])
+    #plt.show()
+    norm_logs.append(norm_log)
     test()
-
+# layers = [i for i in range(len(norm_log[0]))]
+# norms = []
+# [norms.append(norm[0]) for norm in norm_logs]
+# norms = np.array(norms)
+# fig = plt.figure()
+# ax = fig.add_subplot(111, projection='3d')
+# ax.plot_surface(layers, epochs, norms, color='b')
+# plt.show()
