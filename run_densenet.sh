@@ -2,8 +2,8 @@
 git clone https://github.com/gpleiss/efficient_densenet_pytorch
 cd efficient_densenet_pytorch
 rm demo.py
-wget https://github.com/Columbia-Creative-Machines-Lab/Learning-Rate-Normalization/blob/master/sgd_lr_norm.py -O sgd_lr_norm.py
-wget https://github.com/Columbia-Creative-Machines-Lab/Learning-Rate-Normalization/blob/master/densenet_demo.py -O demo.py
+wget https://raw.githubusercontent.com/Columbia-Creative-Machines-Lab/Learning-Rate-Normalization/master/sgd_lr_norm.py -O sgd_lr_norm.py
+wget https://raw.githubusercontent.com/Columbia-Creative-Machines-Lab/Learning-Rate-Normalization/master/densenet_demo.py -O demo.py
 pip3 install fire
 
 # Baselines

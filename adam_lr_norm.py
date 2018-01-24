@@ -59,7 +59,6 @@ class Adam_lr_norm(Optimizer):
 
                 # normalization
                 new_grad = grad
-                np_norm = np.linalg.norm(grad.cpu().numpy())
                 norm = torch.norm(grad)
                 if len(p.data.shape) > 1:
                     if self.schedule == 'exponential':

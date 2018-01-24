@@ -232,7 +232,7 @@ def demo(data=os.getenv('DATA_DIR'), save='/tmp', depth=40, growth_rate=12, effi
         data_root = data
         train_set = tv.datasets.SVHN(data_root, split='train', transform=train_transforms, download=True)
         valid_set = tv.datasets.SVHN(data_root, split='extra', transform=test_transforms, download=True)
-        test_set = tv.datasets.SVHN(data_root, split='test', transform=test_transforms, download=False)
+        test_set = tv.datasets.SVHN(data_root, split='test', transform=test_transforms, download=True)
 
     # Models
     klass = DenseNetEfficient if efficient else DenseNet
