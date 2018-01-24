@@ -90,8 +90,9 @@ class SGD_lr_norm(Optimizer):
             dampening = group['dampening']
             nesterov = group['nesterov']
 
-            # -2 for the last layer of weights, -1 is just the output activations
-            grad_mul = np.linalg.norm(group['params'][-2].grad.data.cpu().numpy())
+            # -2 for the last layer of weights, -1 is the output activations
+            w_mul = np.linalg.norm(group['params'][-2].grad.data.cpu().numpy())
+            b_mul = 1
             avg_norm = 0.0
             i = 0.0
             #for j in range(1, len(group['params'])/2):
@@ -100,9 +101,9 @@ class SGD_lr_norm(Optimizer):
             #    avg_norm += weight_norm
             #    i += 1.0
             #    #if weight_norm > max_norm: min_norm = weight_norm
-            #grad_mul = avg_norm/i
+            #w_mul = avg_norm/i
 
-            #grad_mul = 1
+            #w_mul = 1
             # d is for depth
             d = 0
             #group['lr'] *= 1-1e-4
@@ -140,7 +141,7 @@ class SGD_lr_norm(Optimizer):
                             p.data.add_(-group['lr'], d_p)
                         else:
                             new_lr = -group['lr']/norm
-                            new_lr *= grad_mul
+                            new_lr *= w_mul
                             new_lr = new_lr * math.exp(-self.gamma*d)
                             p.data.add_(new_lr, d_p)
                     elif self.schedule == 'linear':
@@ -149,7 +150,7 @@ class SGD_lr_norm(Optimizer):
                             p.data.add_(-group['lr'], d_p)
                         else:
                             new_lr = -group['lr']/norm
-                            new_lr *= grad_mul
+                            new_lr *= w_mul
                             new_lr -= new_lr*((1-self.gamma)**d)
                             p.data.add_(new_lr, d_p)
                     else: # Normalize
@@ -158,7 +159,34 @@ class SGD_lr_norm(Optimizer):
                             p.data.add_(-group['lr'], d_p)
                         else:
                             new_lr = -group['lr']/norm
-                            new_lr *= grad_mul
+                            new_lr *= w_mul
+                            p.data.add_(new_lr, d_p)
+                elif p.data.shape[0] == 1 and self.schedule != 'none':
+                    if self.schedule == 'exponential':
+                        norm = np.linalg.norm(d_p.cpu().numpy())
+                        if norm == 0:
+                            p.data.add_(-group['lr'], d_p)
+                        else:
+                            new_lr = -group['lr']/norm
+                            new_lr *= b_mul
+                            new_lr = new_lr * math.exp(-self.gamma*d)
+                            p.data.add_(new_lr, d_p)
+                    elif self.schedule == 'linear':
+                        norm = np.linalg.norm(d_p.cpu().numpy())
+                        if norm == 0:
+                            p.data.add_(-group['lr'], d_p)
+                        else:
+                            new_lr = -group['lr']/norm
+                            new_lr *= b_mul
+                            new_lr -= new_lr*((1-self.gamma)**d)
+                            p.data.add_(new_lr, d_p)
+                    else: # Normalize
+                        norm = np.linalg.norm(d_p.cpu().numpy())
+                        if norm == 0:
+                            p.data.add_(-group['lr'], d_p)
+                        else:
+                            new_lr = -group['lr']/norm
+                            new_lr *= b_mul
                             p.data.add_(new_lr, d_p)
                 else:
                     p.data.add_(-group['lr'], d_p)
