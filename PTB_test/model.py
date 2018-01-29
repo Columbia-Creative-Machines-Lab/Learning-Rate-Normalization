@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from lstm import LSTM
+from rnn import RNN
 
 class RNNModel(nn.Module):
     """Container module with an encoder, a recurrent module, and a decoder."""
@@ -19,6 +20,7 @@ class RNNModel(nn.Module):
         #         raise ValueError( """An invalid option for `--model` was supplied,
         #                          options are ['LSTM', 'GRU', 'RNN_TANH' or 'RNN_RELU']""")
         #     self.rnn = nn.RNN(ninp, nhid, nlayers, nonlinearity=nonlinearity, dropout=dropout)
+        # self.rnn = RNN(ninp, nhid)
         self.rnn = LSTM(ninp, nhid)
         self.decoder = nn.Linear(nhid, ntoken)
 
@@ -53,6 +55,7 @@ class RNNModel(nn.Module):
 
         for x in emb:
             hidden, context = self.rnn(x, hidden, context)
+            # hidden = self.rnn(x, hidden)
             hidden_list.append(hidden)
         hidden = torch.cat(hidden_list, 0)
         output = self.drop(hidden)

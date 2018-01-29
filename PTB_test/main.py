@@ -28,7 +28,7 @@ parser.add_argument('--epochs', type=int, default=40,
                     help='upper epoch limit')
 parser.add_argument('--batch_size', type=int, default=20, metavar='N',
                     help='batch size')
-parser.add_argument('--bptt', type=int, default=10,
+parser.add_argument('--bptt', type=int, default=35,
                     help='sequence length')
 parser.add_argument('--dropout', type=float, default=0.2,
                     help='dropout applied to layers (0 = no dropout)')
@@ -167,6 +167,10 @@ def train():
         model.rnn.fgate.bias.grad.data = model.rnn.fgrad_bias
         model.rnn.ggate.bias.grad.data = model.rnn.ggrad_bias
         model.rnn.ogate.bias.grad.data = model.rnn.ograd_bias
+
+        # model.rnn.i2h.weight.grad.data = model.rnn.grad_weight
+        # model.rnn.i2h.bias.grad.data = model.rnn.grad_bias
+        # print(total_loss)
 
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
         torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)

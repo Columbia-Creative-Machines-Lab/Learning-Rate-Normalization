@@ -22,7 +22,7 @@ class LSTM(nn.Module):
         self.f_depth = 0
         self.g_depth = 0
         self.o_depth = 0
-        self.decay_alpha = 0.97
+        self.decay_alpha = 1.00
         self.igrad_weight = torch.zeros(hidden_size, input_size + hidden_size).cuda()
         self.fgrad_weight = torch.zeros(hidden_size, input_size + hidden_size).cuda()
         self.ggrad_weight = torch.zeros(hidden_size, input_size + hidden_size).cuda()
@@ -59,25 +59,25 @@ class LSTM(nn.Module):
         return Variable(torch.zeros(bsz, self.hidden_size)).cuda()
 
     def iDepthDecay(self, module, grad_input, grad_output):
-        self.i_depth += 1
         self.igrad_weight += grad_input[2].data.t() * (self.decay_alpha**self.i_depth)
         self.igrad_bias += grad_input[0].data.sum(0) * (self.decay_alpha**self.i_depth)
+        self.i_depth += 1
         return grad_input
 
     def fDepthDecay(self, module, grad_input, grad_output):
-        self.f_depth += 1
         self.fgrad_weight += grad_input[2].data.t() * (self.decay_alpha**self.f_depth)
         self.fgrad_bias += grad_input[0].data.sum(0) * (self.decay_alpha**self.f_depth)
+        self.f_depth += 1
         return grad_input
 
     def gDepthDecay(self, module, grad_input, grad_output):
-        self.g_depth += 1
         self.ggrad_weight += grad_input[2].data.t() * (self.decay_alpha**self.g_depth)
         self.ggrad_bias += grad_input[0].data.sum(0) * (self.decay_alpha**self.g_depth)
+        self.g_depth += 1
         return grad_input
 
     def oDepthDecay(self, module, grad_input, grad_output):
-        self.o_depth += 1
         self.ograd_weight += grad_input[2].data.t() * (self.decay_alpha**self.o_depth)
         self.ograd_bias += grad_input[0].data.sum(0) * (self.decay_alpha**self.o_depth)
+        self.o_depth += 1
         return grad_input
